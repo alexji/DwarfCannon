@@ -10,6 +10,72 @@ from collections import OrderedDict
 from scipy import optimize, interpolate
 from astropy.time import Time
 from datetime import datetime
+import cPickle as pickle
+
+import utils
+
+#61:57
+manual_order_remap = {58:29, 59:30, 60:31, 62:32, 63:33, 66:36, 67:37, 
+                      79:2, 80:64, 81:0, 82:0, 83:34, 84:29}
+
+def load_continuum_kwargs():
+    """ Manually created continuum masks for big lines """
+    with open("all_kwargs_final.pkl","r") as fp:
+        kwargs = pickle.load(fp)
+    return kwargs
+
+def make_order_labels():
+    tab2, allspecs2 = load_master_table_and_spectra(rvcor_spectra=False)
+    order_limits, all_order_labels = utils.match_orders(allspecs2, dwl=17)
+    with open("order_labels.pkl","w") as fp:
+        pickle.dump([order_limits, all_order_labels], fp)
+def load_order_labels(manual_remap=True):
+    with open("order_labels.pkl","r") as fp:
+        order_limits, all_order_labels = pickle.load(fp)
+    # Manual remapping of some order labels
+    if manual_remap:
+        manual_map = manual_order_remap
+        for order_labels in all_order_labels:
+            for a,b in manual_map.iteritems():
+                while True:
+                    try:
+                        order_labels[order_labels.index(a)] = b
+                    except ValueError:
+                        break
+    return order_limits, all_order_labels
+
+def load_good_table_spectra_labels(rvcor_spectra=True, verbose=False):
+    # Based on manual inspection, these are stars with bad orders (looks saturated)
+    # The stars are all the ones observed in 2007 and 2008
+    order_limits, all_order_labels = load_order_labels()
+    bad_order_labels = [25,26,27,28,29,30,31,32,33,36,37,57,64,65]
+    bad_order_stars = [3, 4, 5, 33, 35, 37, 50, 51, 52, 55, 61, 67, 73, 86, 89, 100, 111, 132, 133]
+    tab, all_orders = load_master_table_and_spectra(rvcor_spectra=rvcor_spectra)
+    num_orders_removed = 0
+    for star_index in bad_order_stars:
+        if verbose: print "Star {}".format(star_index)
+        order_labels = all_order_labels[star_index]
+        orders = all_orders[star_index]
+        for bad_order_label in bad_order_labels:
+            # Loop in case multiple orders have the same order label
+            while True:
+                try:
+                    if verbose: print len(order_labels), order_labels
+                    bad_index = order_labels.index(bad_order_label)
+                except ValueError:
+                    # this order number is not available anymore
+                    break
+                else:
+                    # remove the order label
+                    _ = order_labels.pop(bad_index)
+                    # remove the order spectrum
+                    _ = orders.pop(bad_index)
+                    num_orders_removed += 1
+    print "Removed {} bad orders".format(num_orders_removed)
+    assert len(all_orders) == len(all_order_labels)
+    for i in range(len(all_orders)):
+        assert len(all_orders[i]) == len(all_order_labels[i])
+    return tab, all_orders, all_order_labels
 
 def load_master_table_and_spectra(rvcor_spectra=True):
     ## Load master table and associated files
@@ -98,6 +164,23 @@ def load_master_table_and_spectra(rvcor_spectra=True):
     
     return tab, all_rv_spec
     
+def sort_specs_by_order_label(allspecs=None, all_order_labels=None, rvcor_spectra=True):
+    if allspecs is None:
+        _, allspecs = load_master_table_and_spectra(rvcor_spectra=rvcor_spectra)
+    if all_order_labels is None:
+        _, all_order_labels = load_order_labels()
+    ## Verify that everything is the same size
+    assert len(allspecs) == len(all_order_labels), (len(allspecs), len(all_order_labels))
+    for allspec, order_labels in zip(allspecs, all_order_labels):
+        assert len(allspec) == len(order_labels), (len(allspec), len(order_labels))
+    ## Make a dictionary
+    unique_labels = np.unique(utils.flatten_list_of_lists(all_order_labels))
+    sorted_specs = dict(zip(unique_labels, [[] for _ in unique_labels]))
+    for allspec, order_labels in zip(allspecs, all_order_labels):
+        for spec, order_label in zip(allspec, order_labels):
+            sorted_specs[order_label] += [spec]
+    return sorted_specs
+
 def load_master_table():
     def month2month(monthstr):
         data = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,

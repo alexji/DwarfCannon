@@ -14,12 +14,13 @@ import cPickle as pickle
 
 import utils
 
-#61:57
-manual_order_remap = {58:29, 59:30, 60:31, 62:32, 63:33, 66:36, 67:37, 
-                      79:2, 80:64, 81:0, 82:0, 83:34, 84:29}
+#
+#manual_order_remap = {58:29, 59:30, 60:31, 61:57, 62:32, 63:33, 66:36, 67:37, 
+#                      79:2, 80:64, 81:0, 82:0, 83:34, 84:29}
+manual_order_remap = {79:2, 81:0, 82:0, 83:34}
 
 def load_continuum_kwargs():
-    """ Manually created continuum masks for big lines """
+    """ Manually created continuum masks for big lines, just a temporary automatic thing """
     with open("all_kwargs_final.pkl","r") as fp:
         kwargs = pickle.load(fp)
     return kwargs

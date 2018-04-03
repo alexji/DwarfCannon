@@ -118,59 +118,6 @@ def plot_norm_specs_raw():
     fig.savefig("all_norm_orders_1_{}.png".format(suffix))
     plt.close(fig)
     
-
-def plot_outliers():
-    """
-    LEGACY: An attempt to automatically identify outlier orders
-    Does not work great, I decided to just do this manually
-    """
-    sorted_specs = rd.sort_specs_by_order_label()
-    outlier_dict = {}
-    cont_kwargs = rd.load_continuum_kwargs()
-    outlier_const = 2
-    for order_label, speclist in sorted_specs.iteritems():
-        fig, ax = plt.subplots(figsize=(12,6))
-        N = len(speclist)
-        if N == 0: continue
-        common_dispersion = common_dispersion_map(speclist)
-        fluxes = np.zeros((N, len(common_dispersion)))
-        for i in range(N):
-            normspec = speclist[i].fit_continuum(**cont_kwargs[order_label])
-            fluxes[i,:] = normspec.linterpolate(common_dispersion, fill_value = np.nan).flux
-        q1 = np.nanpercentile(fluxes, 25, axis=0)
-        q2 = np.nanpercentile(fluxes, 50, axis=0)
-        q3 = np.nanpercentile(fluxes, 75, axis=0)
-        IQR = q3 - q1
-        upper_outlier_bound = q3 + outlier_const*IQR
-        lower_outlier_bound = q1 - outlier_const*IQR
-        upper_outlier = fluxes > upper_outlier_bound
-        lower_outlier = fluxes < lower_outlier_bound
-        outlier_pixels = upper_outlier | lower_outlier
-        num_outlier_pixels = np.nansum(outlier_pixels, axis=1)
-
-        print num_outlier_pixels
-        for i in range(N):
-            if num_outlier_pixels[i] > 200:
-                color = 'r'
-                lw = 1
-                alpha = .1
-            else:
-                color = 'k'
-                lw = .5
-                alpha = .1
-            normspec = speclist[i].fit_continuum(**cont_kwargs[order_label])
-            ax.plot(normspec.dispersion, normspec.flux, lw=lw, alpha=alpha, color=color)
-        ax.plot(common_dispersion, upper_outlier_bound, 'b:')
-        ax.plot(common_dispersion, lower_outlier_bound, 'b:')
-        #ax.set_xlim(utils.round10down(common_dispersion[0]), utils.round10up(common_dispersion[-1]))
-        ax.set_xlim(common_dispersion[0], common_dispersion[-1])
-        ax.set_ylim(0,1.5)
-        #plt.figure()
-        #plt.hist(num_outlier_pixels)
-        #plt.show()
-        fig.savefig("normalized_order_figures/outliers_{:02}.pdf".format(order_label), bbox_inches="tight")
-        plt.close(fig)
-
 #if __name__=="__main__":
 def tmp():
 #    tab, allspecs = rd.load_master_table_and_spectra(rvcor_spectra=True)

@@ -49,7 +49,7 @@ def load_good_table_spectra_labels(rvcor_spectra=True, verbose=False):
     # Based on manual inspection, these are stars with bad orders (looks saturated)
     # The stars are all the ones observed in 2007 and 2008
     order_limits, all_order_labels = load_order_labels()
-    bad_order_labels = [25,26,27,28,29,30,31,32,33,36,37,57,62,63,64,65,66,67]
+    bad_order_labels = [25,26,27,28,29,30,31,32,33,35,36,37,57,58,59,62,63,64,65,66,67]
     bad_order_stars = [3, 4, 5, 33, 35, 37, 50, 51, 52, 55, 61, 67, 73, 86, 89, 100, 111, 132, 133]
     tab, all_orders = load_master_table_and_spectra(rvcor_spectra=rvcor_spectra)
     num_orders_removed = 0
@@ -72,6 +72,27 @@ def load_good_table_spectra_labels(rvcor_spectra=True, verbose=False):
                     # remove the order spectrum
                     _ = orders.pop(bad_index)
                     num_orders_removed += 1
+    # Remove Star 116 orders: bad saturation
+    star_index = 116
+    if verbose: print "Star {}".format(star_index)
+    order_labels = all_order_labels[star_index]
+    orders = all_orders[star_index]
+    for bad_order_label in [51, 52, 53, 54, 55, 56, 68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85]:
+        # Loop in case multiple orders have the same order label
+        while True:
+            try:
+                if verbose: print len(order_labels), order_labels
+                bad_index = order_labels.index(bad_order_label)
+            except ValueError:
+                # this order number is not available anymore
+                break
+            else:
+                # remove the order label
+                _ = order_labels.pop(bad_index)
+                # remove the order spectrum
+                _ = orders.pop(bad_index)
+                num_orders_removed += 1
+        
     print "Removed {} bad orders".format(num_orders_removed)
     assert len(all_orders) == len(all_order_labels)
     for i in range(len(all_orders)):
@@ -418,3 +439,6 @@ def load_norm0_spec_order(minmax, index, order, fluxdata=None, ivardata=None):
 #def load_max_allstars_order(order):
 #    fnames = glob.glob("data_common_dispersion/*_{}max.fits".format(order))
 #    return [Spectrum1D.read(fname) for fname in fnames]
+
+def load_master_common_dispersion():
+    return np.load("master_common_dispersion.npy")

@@ -9,13 +9,19 @@ The steps are:
 (4) Define wavelength ranges for each order: a minimum and a maximum range (utils.find_minrange_maxrange)
     And also a dwl for the order.
     Linearly interpolate onto this new (linear) wavelength range for each order.
-    Created here with interpolate_onto_common_dispersion()
+    Created here with interpolate_orders_onto_common_dispersion()
     Output is rd.load_interp_spec_order(), rd.load_flux_order(), rd.load_ivar_order()
     Plot here with plot_common_dispersion()
 (5) Fit preliminary continuum: following Ness+15, do 90% filter in 5A windows and fit a 5A spline to that
     I have done it right now with no point rejection, since the filter probably deals with that
     Created here with make_norm0_spectra()
     Plot with plot_common_dispersion_norm()
+(6) Compute master dispersion
+Then iterate:
+   (7) Stitch normalized spectra
+   (8) Run the Cannon
+   (9) Find pixels with 
+   (10) Renormalize spectra using those pixels
 
 One of the key steps here is to define the orders.
 For the initial reduction (normalization) step, each order needs to be treated independently.
@@ -29,8 +35,9 @@ There are challenges:
 import numpy as np
 from smh import specutils
 import matplotlib.pyplot as plt
-from smh.specutils import Spectrum1D, motions
-from smh.specutils.spectrum import common_dispersion_map2 as common_dispersion_map
+from smh import specutils
+from smh.specutils import Spectrum1D, motions, spectrum
+from smh.specutils.spectrum import common_dispersion_map3 as common_dispersion_map
 from astropy.io import ascii, fits
 from astropy import table
 import glob, os, sys, time, re
@@ -64,7 +71,7 @@ def plot_stuff_for_order_remapping():
     fig.savefig("order_remapping.pdf")
     plt.show()
 
-def interpolate_onto_common_dispersion():
+def interpolate_orders_onto_common_dispersion():
     """
     Define common dispersion for each order and interpolate onto that dispersion
     For each order, create a separate file
@@ -111,7 +118,7 @@ def interpolate_onto_common_dispersion():
         np.save("data_common_dispersion/maxivar_order{:02}".format(order),ivardatmax)
     
     tab = table.Table(rows=data, names=["order","minwl1","minwl2","maxwl1","maxwl2","dwl"])
-    tab.write("order_dispersion_table.dat",format="ascii.fixed_width_two_line")
+    tab.write("order_dispersion_table.dat",format="ascii.fixed_width_two_line", overwrite=True)
     np.save("order_dispersion_table.npy",tab.as_array())
 
 def plot_common_dispersion(minmax):
@@ -179,44 +186,75 @@ def make_norm0_spectra(minmax):
     #    norm.write("data_common_dispersion/norm0_{}_{}{}.fits".format(star, order, minmax))
     
 
-if __name__=="__main__":
-    #interpolate_onto_common_dispersion()
-    fig = plot_common_dispersion("min")
+def make_master_dispersion():
+    order_table = rd.load_order_table()
+    alldisp = []
+    for order in np.sort(order_table["order"]):
+        disp = rd.load_tabulated_dispersion("max", order)
+        spec = Spectrum1D(disp, np.zeros_like(disp), np.zeros_like(disp))
+        alldisp.append(spec)
+    common_dispersion = common_dispersion_map(alldisp)
+    np.save("master_common_dispersion.npy", common_dispersion)
+    fig, ax = plt.subplots()
+    ax.plot(common_dispersion[:-1], np.diff(common_dispersion), label="dwl")
+    ax.plot(common_dispersion[:-1], 2*np.diff(common_dispersion), label="2*dwl")
+    ax.set_ylim(0,.25)
+    ax.legend(loc='lower right')
+    fig.savefig("common_dispersion_map_dwl.png", bbox_inches='tight')
     plt.close(fig)
-    fig = plot_common_dispersion("max")
-    plt.close(fig)
-    #make_norm0_spectra("min")
-    #make_norm0_spectra("max")
-    fig = plot_common_dispersion_norm("min")
-    plt.close(fig)
-    fig = plot_common_dispersion_norm("max")
-    plt.close(fig)
-    #plt.show()
-    #make_norm0_spectra()
-    #for i, order_num in enumerate(np.sort(order_table["order"])):
-    #    minstarorders = rd.load_min_allstars_order(order_num)
-    #    maxstarorders = rd.load_min_allstars_order(order_num)
-        
-def tmp():
-    """ Plot all spectra on common dispersion map, norm and not"""
-    order_table = table.Table(np.load("order_dispersion_table.npy"))
-    N = len(order_table)
-    assert N == 81
-    # 
-    fig1, axes1 = plt.subplots(9,9,figsize=(9*8,9*4))
-    fig2, axes2 = plt.subplots(9,9,figsize=(9*8,9*4))
-    fig3, axes3 = plt.subplots(9,9,figsize=(9*8,9*4))
-    fig4, axes4 = plt.subplots(9,9,figsize=(9*8,9*4))
-    for i, order_num in enumerate(np.sort(order_table["order"])):
-        ax1 = axes1.flat[i]; ax2 = axes2.flat[i]
-        ax3 = axes3.flat[i]; ax4 = axes4.flat[i]
-        minstarorders = rd.load_min_allstars_order(order_num)
-        for spec in minstarorders:
-            ax1.plot(spec.dispersion, spec.flux, lw=.5, alpha=.1)
-            norm = utils.fit_quantile_continuum
-        maxstarorders = rd.load_min_allstars_order(order_num)
-        
+
+def stitch_normalized_spectra():
+    tab = rd.load_master_table()
+    common_dispersion = rd.load_master_common_dispersion()
+    order_table = rd.load_order_table()
+    order_labels = np.sort(order_table["order"])
+    wavelist = []
+    normfluxlist = []
+    normivarlist = []
+    minmax = "max"
+    for order in order_labels:
+        wavelist.append(rd.load_tabulated_dispersion(minmax, order))
+        normfluxlist.append(rd.load_normflux_order(minmax, order))
+        normivarlist.append(rd.load_normivar_order(minmax, order))
+    N = normfluxlist[0].shape[0]
+    starspeclist = []
     
+    bigfluxtable = np.zeros((N, len(common_dispersion)))
+    bigivartable = np.zeros((N, len(common_dispersion)))
+    for i in range(N):
+        specs = []
+        for order, wave, flux, ivar in zip(order_labels, wavelist, normfluxlist, normivarlist):
+            specs.append(Spectrum1D(wave, flux[i,:], ivar[i,:]))
+        starspec = spectrum.stitch(specs, new_dispersion=common_dispersion)
+        starspeclist.append(starspec)
+        starname = tab[i]["Star"]
+        starspec.write("data_stitched_spectra/{}-{:03}_{}.fits".format(starname,i,minmax))
+        bigfluxtable[i,:] = starspec.flux
+        bigivartable[i,:] = starspec.ivar
+    np.save("data_stitched_spectra/all_flux_{}.npy".format(minmax), bigfluxtable)
+    np.save("data_stitched_spectra/all_ivar_{}.npy".format(minmax), bigivartable)
+    fig, ax = plt.subplots(figsize=(20,5))
+    for starspec in starspeclist:
+        ax.plot(starspec.dispersion, starspec.flux, ',', alpha=.1)
+    ax.set_xlim(common_dispersion[0], common_dispersion[-1])
+    ax.set_ylim(0,1.2)
+    fig.savefig("all_stitched_norm0_{}.png".format(minmax), bbox_inches="tight")
+    
+
+if __name__=="__main__":
+#    interpolate_orders_onto_common_dispersion()
+#    fig = plot_common_dispersion("min")
+#    plt.close(fig)
+#    fig = plot_common_dispersion("max")
+#    plt.close(fig)
+#    make_norm0_spectra("min")
+#    make_norm0_spectra("max")
+#    fig = plot_common_dispersion_norm("min")
+#    plt.close(fig)
+#    fig = plot_common_dispersion_norm("max")
+#    plt.close(fig)
+#    make_master_dispersion()
+    stitch_normalized_spectra()
 
 def plot_norm_specs_raw():
 #if __name__=="__main__":

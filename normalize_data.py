@@ -106,28 +106,48 @@ def interpolate_onto_common_dispersion():
         np.save("data_common_dispersion/minivar_order{:02}".format(order),ivardatmin)
         np.save("data_common_dispersion/maxflux_order{:02}".format(order),fluxdatmax)
         np.save("data_common_dispersion/maxivar_order{:02}".format(order),ivardatmax)
-            
+    
     tab = table.Table(rows=data, names=["order","minwl1","minwl2","maxwl1","maxwl2","dwl"])
     tab.write("order_dispersion_table.dat",format="ascii.fixed_width_two_line")
     np.save("order_dispersion_table.npy",tab.as_array())
+
+def plot_common_dispersion(minmax):
+    assert minmax in ["min", "max"]
+    fig, axes = plt.subplots(9,9,figsize=(9*8,9*4))
+    order_table = rd.load_order_table()
+    for iorder, order in enumerate(np.sort(order_table["order"])):
+        ax = axes.flat[iorder]
+        wave = rd.load_tabulated_dispersion(minmax, order)
+        flux = rd.load_flux_order(minmax, order)
+        for i in range(flux.shape[0]):
+            #if np.all(np.isnan(flux[i,:])): continue
+            ax.plot(wave, flux[i,:], alpha=.1, lw=.5)
+    fig.savefig("all_common_dispersion_{}.png".format(minmax), bbox_inches="tight")
+    return fig
 
 def make_norm0_spectra():
     order_table = table.Table(np.load("order_dispersion_table.npy"))
     N = len(order_table)
     assert N == 81
-    regex = re.compile("data_common_dispersion/(.*)\_(\d+)(...)\.fits")
-    fnames = glob.glob("data_common_dispersion/*")
-    for fname in fnames:
-        if fname.startswith("norm0"): continue
-        print fname
-        star, order, minmax = regex.findall(fname)[0]
-        spec = Spectrum1D.read(fname)
-        norm = utils.fit_quantile_continuum(spec, order=4, Niter=5)
-        norm.write("data_common_dispersion/norm0_{}_{}{}.fits".format(star, order, minmax))
+    #regex = re.compile("data_common_dispersion/(.*)\_(\d+)(...)\.fits")
+    #fnames = glob.glob("data_common_dispersion/*")
+    #for fname in fnames:
+    #    if fname.startswith("norm0"): continue
+    #    print fname
+    #    star, order, minmax = regex.findall(fname)[0]
+    #    spec = Spectrum1D.read(fname)
+    #    norm = utils.fit_quantile_continuum(spec, order=4, Niter=5)
+    #    norm.write("data_common_dispersion/norm0_{}_{}{}.fits".format(star, order, minmax))
+    
 
 if __name__=="__main__":
-    interpolate_onto_common_dispersion()
-    make_norm0_spectra()
+    #interpolate_onto_common_dispersion()
+    fig = plot_common_dispersion("min")
+    plt.close(fig)
+    fig = plot_common_dispersion("max")
+    plt.close(fig)
+    #plt.show()
+    #make_norm0_spectra()
     #for i, order_num in enumerate(np.sort(order_table["order"])):
     #    minstarorders = rd.load_min_allstars_order(order_num)
     #    maxstarorders = rd.load_min_allstars_order(order_num)

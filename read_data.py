@@ -361,6 +361,16 @@ def read_multispec(fname, full_output=False):
     return orders
 
 
+def load_order_table():
+    return table.Table(np.load("order_dispersion_table.npy"))
+def load_tabulated_dispersion(minmax, order):
+    assert minmax in ["min","max"], minmax
+    tab = load_order_table()
+    ix = np.where(order == tab["order"])[0][0]
+    col1 = "{}wl1".format(minmax)
+    col2 = "{}wl2".format(minmax)
+    return np.arange(tab[ix][col1], tab[ix][col2] + tab[ix]["dwl"], tab[ix]["dwl"])
+    
 def load_min_dispersion(order):
     data = np.load("order_dispersion_table.npy")
     ix = np.where(order == data[:,0])[0][0]
@@ -369,6 +379,20 @@ def load_max_dispersion(order):
     data = np.load("order_dispersion_table.npy")
     ix = np.where(order == data[:,0])[0][0]
     return np.arange(data[ix,3], data[ix,4]+data[ix,5], data[ix,5])
+
+def load_flux_order(minmax,order):
+    assert minmax in ["min","max"], minmax
+    return np.load("data_common_dispersion/{}flux_order{:02}.npy".format(minmax,order))
+def load_ivar_order(minmax,order):
+    assert minmax in ["min","max"], minmax
+    return np.load("data_common_dispersion/{}ivar_order{:02}.npy".format(minmax,order))
+
+def load_interp_spec_order(minmax, index, order, fluxdata=None, ivardata=None):
+    assert minmax in ["min","max"], minmax
+    if fluxdata is None: fluxdata = load_flux_order(minmax, order)
+    if ivardata is None: ivardata = load_ivar_order(minmax, order)
+    wave = load_tabulated_dispersion(minmax, order)
+    return Spectrum1D(wave, fluxdata[index,:], ivardata[index,:])
 
 #def load_min_star_order(star, order):
 #    fname = "data_common_dispersion/{}_{}min.fits".format(star, order)

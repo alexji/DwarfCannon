@@ -439,6 +439,12 @@ def load_norm0_spec_order(minmax, index, order, fluxdata=None, ivardata=None):
 #    fnames = glob.glob("data_common_dispersion/*_{}max.fits".format(order))
 #    return [Spectrum1D.read(fname) for fname in fnames]
 
+def load_stitched_flux_ivar(minmax="max"):
+    assert minmax in ["min","max"], minmax
+    bigfluxtable = np.load("data_stitched_spectra/all_flux_{}.npy".format(minmax))
+    bigivartable = np.load("data_stitched_spectra/all_ivar_{}.npy".format(minmax))
+    return bigfluxtable, bigivartable
+
 def load_master_common_dispersion():
     return np.load("master_common_dispersion.npy")
 

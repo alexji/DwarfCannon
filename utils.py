@@ -52,18 +52,30 @@ def find_minrange_maxrange(list_of_data):
     maxmax = np.max(maxdata)
     return (maxmin, minmax), (minmin, maxmax)
 
-def fit_quantile_continuum(spec, quantile=90., wlrange=5., function="chebyshev", order=4, full_output=False):
+#def fit_quantile_continuum(spec, quantile=90., wlrange=5., Niter=5, function="chebyshev", order=4, full_output=False, **kwargs):
+def fit_quantile_continuum(spec, quantile=90., wlrange=5., Niter=5, function="spline", order=3, full_output=False, **kwargs):
     """ Calculate the 90% quantile (in a 5A range) and fit continuum to that """
     wave, flux, ivar = spec.dispersion, spec.flux, spec.ivar
     dwl = np.median(np.diff(wave))
     Npix = int(wlrange/dwl)
     if Npix % 2 == 0: Npix += 1
-    quantflux = percentile_filter(flux, quantile, Npix)
-    quantspec = specutils.Spectrum1D(wave, quantflux, ivar)
-    # After filtering, do not iteratively reject points
-    norm, cont, left, right = quantspec.fit_continuum(max_iterations=1, low_sigma_clip=90.0, high_sigma_clip=90.0,
-                                                      order=order, function=function, full_output=True)
-    newnorm = specutils.Spectrum1D(wave, flux/cont, ivar)
+    cont = None
+    _flux = flux.copy()
+    # Iteratively fit out the continuum
+    knot_spacing = wlrange if function == "spline" else None
+    for iter in range(Niter):
+        quantflux = percentile_filter(_flux, quantile, Npix)
+        quantspec = specutils.Spectrum1D(wave, quantflux, ivar)
+        # After filtering, do not iteratively reject points
+        norm, _cont, left, right = quantspec.fit_continuum(max_iterations=1, low_sigma_clip=90.0, high_sigma_clip=90.0,
+                                                           order=order, function=function, full_output=True, knot_spacing=knot_spacing,
+                                                           **kwargs)
+        _flux = _flux/_cont
+        if cont is None:
+            cont = _cont.copy()
+        else:
+            cont *= _cont
+    newnorm = specutils.Spectrum1D(wave, flux/cont, ivar * cont * cont)
     if full_output:
         return newnorm, cont, left, right
     return newnorm

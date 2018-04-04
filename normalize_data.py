@@ -43,6 +43,7 @@ import utils
 
 
 def plot_stuff_for_order_remapping():
+    """ Make a plot showing order limits and how I remapped it """
     order_limits, all_order_labels = rd.load_order_labels(manual_remap=True)
     order_labels_flat = []
     for order_labels in all_order_labels:
@@ -59,6 +60,98 @@ def plot_stuff_for_order_remapping():
     ax.set_xlim(-5,85)
     fig.savefig("order_remapping.pdf")
     plt.show()
+
+def interpolate_onto_common_dispersion():
+    """
+    Define common dispersion for each order and interpolate onto that dispersion
+    For each order, create a separate file
+    """
+    tab, allspecs, all_order_labels = rd.load_good_table_spectra_labels(rvcor_spectra=True)
+    Nspec = len(tab)
+    sorted_specs = rd.sort_specs_by_order_label(allspecs, all_order_labels)
+    order_labels = np.sort(sorted_specs.keys())
+    data = []
+    for order in order_labels:
+        specs = sorted_specs[order]
+        waves = [spec.dispersion for spec in specs]
+        (minwl1, minwl2), (maxwl1, maxwl2) = utils.find_minrange_maxrange(waves)
+        
+        disp = common_dispersion_map(specs)
+        dwl = np.median(np.diff(disp))
+
+        minwldisp = np.arange(minwl1, minwl2+dwl, dwl)
+        maxwldisp = np.arange(maxwl1, maxwl2+dwl, dwl)
+        print "{:02} {:7.2f}-{:7.2f}, {:.3f} (Npt={}, Nspec={})".format(order, minwl1, minwl2, dwl, len(minwldisp), len(specs))
+        print "{:02} {:7.2f}-{:7.2f}, {:.3f} (Npt={}, Nspec={})".format(order, maxwl1, maxwl2, dwl, len(maxwldisp), len(specs))
+        data.append([order, minwl1, minwl2, maxwl1, maxwl2, dwl])
+        
+        fluxdatmin = np.full((Nspec, len(minwldisp)), np.nan)
+        ivardatmin = np.full((Nspec, len(minwldisp)), np.nan)
+        fluxdatmax = np.full((Nspec, len(maxwldisp)), np.nan)
+        ivardatmax = np.full((Nspec, len(maxwldisp)), np.nan)
+        for spec in specs:
+            starindex = spec.metadata["MasterIndex"]
+            #starname = spec.metadata["StarIndex"]
+            #minoutfname = "data_common_dispersion/{}_{}min.fits".format(starname, order)
+            #maxoutfname = "data_common_dispersion/{}_{}max.fits".format(starname, order)
+            specmin = spec.linterpolate(minwldisp, fill_value=np.nan)
+            fluxdatmin[starindex,:] = specmin.flux
+            ivardatmin[starindex,:] = specmin.ivar
+            #specmin.write(minoutfname)
+            specmax = spec.linterpolate(maxwldisp, fill_value=np.nan)
+            fluxdatmax[starindex,:] = specmax.flux
+            ivardatmax[starindex,:] = specmax.ivar
+            #specmax.write(maxoutfname)
+        np.save("data_common_dispersion/minflux_order{:02}".format(order),fluxdatmin)
+        np.save("data_common_dispersion/minivar_order{:02}".format(order),ivardatmin)
+        np.save("data_common_dispersion/maxflux_order{:02}".format(order),fluxdatmax)
+        np.save("data_common_dispersion/maxivar_order{:02}".format(order),ivardatmax)
+            
+    tab = table.Table(rows=data, names=["order","minwl1","minwl2","maxwl1","maxwl2","dwl"])
+    tab.write("order_dispersion_table.dat",format="ascii.fixed_width_two_line")
+    np.save("order_dispersion_table.npy",tab.as_array())
+
+def make_norm0_spectra():
+    order_table = table.Table(np.load("order_dispersion_table.npy"))
+    N = len(order_table)
+    assert N == 81
+    regex = re.compile("data_common_dispersion/(.*)\_(\d+)(...)\.fits")
+    fnames = glob.glob("data_common_dispersion/*")
+    for fname in fnames:
+        if fname.startswith("norm0"): continue
+        print fname
+        star, order, minmax = regex.findall(fname)[0]
+        spec = Spectrum1D.read(fname)
+        norm = utils.fit_quantile_continuum(spec, order=4, Niter=5)
+        norm.write("data_common_dispersion/norm0_{}_{}{}.fits".format(star, order, minmax))
+
+if __name__=="__main__":
+    interpolate_onto_common_dispersion()
+    make_norm0_spectra()
+    #for i, order_num in enumerate(np.sort(order_table["order"])):
+    #    minstarorders = rd.load_min_allstars_order(order_num)
+    #    maxstarorders = rd.load_min_allstars_order(order_num)
+        
+def tmp():
+    """ Plot all spectra on common dispersion map, norm and not"""
+    order_table = table.Table(np.load("order_dispersion_table.npy"))
+    N = len(order_table)
+    assert N == 81
+    # 
+    fig1, axes1 = plt.subplots(9,9,figsize=(9*8,9*4))
+    fig2, axes2 = plt.subplots(9,9,figsize=(9*8,9*4))
+    fig3, axes3 = plt.subplots(9,9,figsize=(9*8,9*4))
+    fig4, axes4 = plt.subplots(9,9,figsize=(9*8,9*4))
+    for i, order_num in enumerate(np.sort(order_table["order"])):
+        ax1 = axes1.flat[i]; ax2 = axes2.flat[i]
+        ax3 = axes3.flat[i]; ax4 = axes4.flat[i]
+        minstarorders = rd.load_min_allstars_order(order_num)
+        for spec in minstarorders:
+            ax1.plot(spec.dispersion, spec.flux, lw=.5, alpha=.1)
+            norm = utils.fit_quantile_continuum
+        maxstarorders = rd.load_min_allstars_order(order_num)
+        
+    
 
 def plot_norm_specs_raw():
 #if __name__=="__main__":
@@ -141,7 +234,7 @@ def tmp():
     #plt.gcf().savefig("dispersion_diff.pdf")
     #plt.show()
     
-    tab, allspecs, all_order_labels = rd.load_good_table_spectra_labels(rvcor_spectra=False)
+    tab, allspecs, all_order_labels = rd.load_good_table_spectra_labels(rvcor_spectra=True)
     sorted_specs = rd.sort_specs_by_order_label(allspecs, all_order_labels)
     order_dispersions = {}
     fig, ax = plt.subplots(figsize=(20,10))
@@ -162,5 +255,5 @@ def tmp():
 
 
 if __name__=="__main__":
-    plot_stuff_for_order_remapping()
+    #plot_stuff_for_order_remapping()
     pass

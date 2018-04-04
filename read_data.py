@@ -92,7 +92,7 @@ def load_master_table_and_spectra(rvcor_spectra=True):
     red_min2 = []; red_max2 = []
     blue_norder2 = []; red_norder2 = []
     order_numss = []; order_numss2 = []
-    for row in tab:
+    for irow,row in enumerate(tab):
         #print row["blue_fname"], row["red_fname"]
         ordernumkey = None
         
@@ -125,6 +125,9 @@ def load_master_table_and_spectra(rvcor_spectra=True):
         vcorr = -vobs
         order_nums = []; order_nums2 = []
         for order in orders:
+            order.metadata["Star"] = row["Star"]
+            order.metadata["StarIndex"] = row["Star"]+"-{:03}".format(irow)
+            order.metadata["MasterIndex"] = irow
             if rvcor_spectra:
                 order.redshift(vcorr)
             if ordernumkey is None:
@@ -356,3 +359,26 @@ def read_multispec(fname, full_output=False):
         order.metadata["beam"] = mapping[1]
     if full_output: return orders, code
     return orders
+
+
+def load_min_dispersion(order):
+    data = np.load("order_dispersion_table.npy")
+    ix = np.where(order == data[:,0])[0][0]
+    return np.arange(data[ix,1], data[ix,2]+data[ix,5], data[ix,5])
+def load_max_dispersion(order):
+    data = np.load("order_dispersion_table.npy")
+    ix = np.where(order == data[:,0])[0][0]
+    return np.arange(data[ix,3], data[ix,4]+data[ix,5], data[ix,5])
+
+#def load_min_star_order(star, order):
+#    fname = "data_common_dispersion/{}_{}min.fits".format(star, order)
+#    return Spectrum1D.read(fname)
+#def load_max_star_order(star, order):
+#    fname = "data_common_dispersion/{}_{}max.fits".format(star, order)
+#    return Spectrum1D.read(fname)
+#def load_min_allstars_order(order):
+#    fnames = glob.glob("data_common_dispersion/*_{}min.fits".format(order))
+#    return [Spectrum1D.read(fname) for fname in fnames]
+#def load_max_allstars_order(order):
+#    fnames = glob.glob("data_common_dispersion/*_{}max.fits".format(order))
+#    return [Spectrum1D.read(fname) for fname in fnames]

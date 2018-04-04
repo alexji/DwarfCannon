@@ -1,6 +1,5 @@
 import numpy as np
 from smh import specutils
-#import matplotlib.pyplot as plt
 from smh.specutils import Spectrum1D, motions
 from astropy.io import ascii, fits
 from astropy import table
@@ -14,7 +13,7 @@ import cPickle as pickle
 
 import utils
 
-#
+
 #manual_order_remap = {58:29, 59:30, 60:31, 61:57, 62:32, 63:33, 66:36, 67:37, 
 #                      79:2, 80:64, 81:0, 82:0, 83:34, 84:29}
 manual_order_remap = {79:2, 81:0, 82:0, 83:34}
@@ -442,3 +441,49 @@ def load_norm0_spec_order(minmax, index, order, fluxdata=None, ivardata=None):
 
 def load_master_common_dispersion():
     return np.load("master_common_dispersion.npy")
+
+def load_roed_data(full_output=False):
+    """ Load master table with all labels """
+    mtab = load_master_table()
+    df1 = table.Table.read("roed14_stars.fits").to_pandas()
+    def renamer(x):
+        """ match master table Star with Name """
+        x = x.strip()
+        if x.startswith("BD") or x.startswith("CD"): return x.replace(" ","_")
+        return x.replace(" ","")
+    df1.index = map(renamer, df1["Name"])
+    star_labels = ["Teff", "logg", "Vt", "__M_H_"] # Should include some other columns eventually 
+                                                   # to test how individual stars might affect things
+    for label in star_labels:
+        mtab.add_column(mtab.Column(df1.loc[mtab["Star"]][label], label))
+    mtab.rename_column("__M_H_", "[M/H]")
+
+    # Set up abundances
+    df2 = table.Table.read("roed14_abunds.fits").to_pandas()
+    df2["Name"] = map(renamer, df2["Name"])
+    df2.loc[:,"log_e_"][df2["l_log_e_"] == "<"] = np.nan
+    df2.loc[:,"__X_Fe_"][df2["l_log_e_"] == "<"] = np.nan
+    all_ions = np.unique(df2["Ion"])
+    groups = df2.groupby("Ion")
+    
+    _abunds = []
+    for ion in all_ions:
+        tdf = groups.get_group(ion)
+        xfe = pd.Series(tdf["__X_Fe_"], name=ion.strip(), copy=True)
+        xfe.index = tdf["Name"]
+        _abunds.append(xfe)
+    abunds = pd.DataFrame(_abunds).transpose()
+    for ion in all_ions:
+        ion = ion.strip()
+        if "(" in ion and ")" in ion:
+            newname = ion.split("(")[1][:-1]
+            assert len(newname) == 2, newname
+            newname = "[{}/Fe]".format(newname)
+        elif "Fe " in ion:
+            newname = "[{}/H]".format(ion)
+        else:
+            newname = "[{}/Fe]".format(ion)
+        mtab.add_column(mtab.Column(abunds.loc[mtab["Star"]][ion], name=newname, copy=True))
+    if full_output:
+        return mtab, df1, abunds
+    return mtab

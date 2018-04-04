@@ -49,7 +49,7 @@ def load_good_table_spectra_labels(rvcor_spectra=True, verbose=False):
     # Based on manual inspection, these are stars with bad orders (looks saturated)
     # The stars are all the ones observed in 2007 and 2008
     order_limits, all_order_labels = load_order_labels()
-    bad_order_labels = [25,26,27,28,29,30,31,32,33,36,37,57,64,65]
+    bad_order_labels = [25,26,27,28,29,30,31,32,33,36,37,57,62,63,64,65,66,67]
     bad_order_stars = [3, 4, 5, 33, 35, 37, 50, 51, 52, 55, 61, 67, 73, 86, 89, 100, 111, 132, 133]
     tab, all_orders = load_master_table_and_spectra(rvcor_spectra=rvcor_spectra)
     num_orders_removed = 0
@@ -386,11 +386,23 @@ def load_flux_order(minmax,order):
 def load_ivar_order(minmax,order):
     assert minmax in ["min","max"], minmax
     return np.load("data_common_dispersion/{}ivar_order{:02}.npy".format(minmax,order))
+def load_normflux_order(minmax,order):
+    assert minmax in ["min","max"], minmax
+    return np.load("data_common_dispersion/{}normflux_order{:02}.npy".format(minmax,order))
+def load_normivar_order(minmax,order):
+    assert minmax in ["min","max"], minmax
+    return np.load("data_common_dispersion/{}normivar_order{:02}.npy".format(minmax,order))
 
 def load_interp_spec_order(minmax, index, order, fluxdata=None, ivardata=None):
     assert minmax in ["min","max"], minmax
     if fluxdata is None: fluxdata = load_flux_order(minmax, order)
     if ivardata is None: ivardata = load_ivar_order(minmax, order)
+    wave = load_tabulated_dispersion(minmax, order)
+    return Spectrum1D(wave, fluxdata[index,:], ivardata[index,:])
+def load_norm0_spec_order(minmax, index, order, fluxdata=None, ivardata=None):
+    assert minmax in ["min","max"], minmax
+    if fluxdata is None: fluxdata = load_normflux_order(minmax, order)
+    if ivardata is None: ivardata = load_normivar_order(minmax, order)
     wave = load_tabulated_dispersion(minmax, order)
     return Spectrum1D(wave, fluxdata[index,:], ivardata[index,:])
 

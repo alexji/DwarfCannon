@@ -9,10 +9,13 @@ The steps are:
 (4) Define wavelength ranges for each order: a minimum and a maximum range (utils.find_minrange_maxrange)
     And also a dwl for the order.
     Linearly interpolate onto this new (linear) wavelength range for each order.
-    TODO
-(5) Fit preliminary continuum:
-    
-    
+    Created here with interpolate_onto_common_dispersion()
+    Output is rd.load_interp_spec_order(), rd.load_flux_order(), rd.load_ivar_order()
+    Plot here with plot_common_dispersion()
+(5) Fit preliminary continuum: following Ness+15, do 90% filter in 5A windows and fit a 5A spline to that
+    I have done it right now with no point rejection, since the filter probably deals with that
+    Created here with make_norm0_spectra()
+    Plot with plot_common_dispersion_norm()
 
 One of the key steps here is to define the orders.
 For the initial reduction (normalization) step, each order needs to be treated independently.
@@ -121,14 +124,50 @@ def plot_common_dispersion(minmax):
         flux = rd.load_flux_order(minmax, order)
         for i in range(flux.shape[0]):
             #if np.all(np.isnan(flux[i,:])): continue
-            ax.plot(wave, flux[i,:], alpha=.1, lw=.5)
+            ax.plot(wave, flux[i,:]/np.nanpercentile(flux[i,:], 95), alpha=.1, lw=.5)
+        ax.set_xlim(utils.round10down(wave[0]), utils.round10up(wave[-1]))
+        ax.set_ylim(0,1.4)
+        N_good = np.sum(np.any(~np.isnan(flux), axis=1))
+        ax.set_title("{} (N={})".format(order, N_good))
     fig.savefig("all_common_dispersion_{}.png".format(minmax), bbox_inches="tight")
     return fig
 
-def make_norm0_spectra():
-    order_table = table.Table(np.load("order_dispersion_table.npy"))
-    N = len(order_table)
-    assert N == 81
+def plot_common_dispersion_norm(minmax):
+    assert minmax in ["min", "max"]
+    fig, axes = plt.subplots(9,9,figsize=(9*8,9*4))
+    order_table = rd.load_order_table()
+    for iorder, order in enumerate(np.sort(order_table["order"])):
+        ax = axes.flat[iorder]
+        wave = rd.load_tabulated_dispersion(minmax, order)
+        flux = rd.load_normflux_order(minmax, order)
+        for i in range(flux.shape[0]):
+            ax.plot(wave, flux[i,:], alpha=.1, lw=.5)
+        ax.set_xlim(utils.round10down(wave[0]), utils.round10up(wave[-1]))
+        ax.set_ylim(0,1.2)
+        N_good = np.sum(np.any(~np.isnan(flux), axis=1))
+        ax.set_title("{} (N={})".format(order, N_good))
+    fig.savefig("all_common_dispersion_norm_{}.png".format(minmax), bbox_inches="tight")
+    return fig
+
+def make_norm0_spectra(minmax):
+    assert minmax in ["min", "max"]
+    order_table = rd.load_order_table()
+    for iorder, order in enumerate(np.sort(order_table["order"])):
+        wave = rd.load_tabulated_dispersion(minmax, order)
+        flux = rd.load_flux_order(minmax, order)
+        ivar = rd.load_ivar_order(minmax, order)
+        normflux = np.full_like(flux, np.nan)
+        normivar = np.full_like(ivar, np.nan)
+        for i in range(flux.shape[0]):
+            spec = Spectrum1D(wave, flux[i,:], ivar[i,:])
+            norm = utils.fit_quantile_continuum(spec, order=4, Niter=5)            
+            normflux[i,:] = norm.flux
+            normivar[i,:] = norm.ivar
+        np.save("data_common_dispersion/{}normflux_order{:02}".format(minmax, order), normflux)
+        np.save("data_common_dispersion/{}normivar_order{:02}".format(minmax, order), normivar)
+        
+    #N = len(order_table)
+    #assert N == 81
     #regex = re.compile("data_common_dispersion/(.*)\_(\d+)(...)\.fits")
     #fnames = glob.glob("data_common_dispersion/*")
     #for fname in fnames:
@@ -145,6 +184,12 @@ if __name__=="__main__":
     fig = plot_common_dispersion("min")
     plt.close(fig)
     fig = plot_common_dispersion("max")
+    plt.close(fig)
+    #make_norm0_spectra("min")
+    #make_norm0_spectra("max")
+    fig = plot_common_dispersion_norm("min")
+    plt.close(fig)
+    fig = plot_common_dispersion_norm("max")
     plt.close(fig)
     #plt.show()
     #make_norm0_spectra()

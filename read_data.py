@@ -464,7 +464,7 @@ def load_roed_data(full_output=False):
     df1.index = map(renamer, df1["Name"])
     star_labels = ["Teff", "logg", "Vt", "__M_H_"] # Should include some other columns eventually 
                                                    # to test how individual stars might affect things
-    star_labels += ["SN3950","SN4550","SN5200","SN6750"]
+    star_labels += ["SN3950","SN4550","SN5200","SN6750","Cl"]
     for label in star_labels:
         mtab.add_column(mtab.Column(df1.loc[mtab["Star"]][label], label))
     mtab.rename_column("__M_H_", "[M/H]")

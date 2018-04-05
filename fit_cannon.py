@@ -8,9 +8,24 @@ from smh import specutils
 
 import thecannon as tc
 
-def load_wave_flux_ivar():
+def load_wave_flux_ivar(remove_hb=False, remove_0708=False):
     wave = rd.load_master_common_dispersion()
     flux, ivar = rd.load_stitched_flux_ivar()
+    if remove_hb or remove_0708:
+        mtab = rd.load_roed_data()
+        N = len(mtab)
+        if remove_hb:
+            ii = mtab["Cl"] == "RG"
+            mtab = mtab[ii]
+            flux = flux[ii,:]
+            ivar = ivar[ii,:]
+        if remove_0708:
+            ii = np.logical_and(mtab["Year"] != "2007", mtab["Year"] != "2008")
+            mtab = mtab[ii]
+            flux = flux[ii,:]
+            ivar = ivar[ii,:]
+        print "Cutting stars: Originally {} spectra, now {} spectra".format(N, len(mtab))
+        wave = [wave, mtab]
     return wave, flux, ivar
 
 def cut_pixels_1(wave, flux, ivar):
@@ -75,6 +90,33 @@ def cut_pixels_1(wave, flux, ivar):
     
     return wave, flux, ivar
 
+def cut_pixels_4000_6800(wave, flux, ivar):
+    ## Remove nan pixels
+    ii = np.isnan(flux)
+    flux[ii] = 1.0
+    ivar[ii] = 0.0
+    
+    ## Remove outlier points
+    ii = np.abs(flux - 1) > 1
+    flux[ii] = 1.0
+    ivar[ii] = 0.0
+    
+    # Cut on wavelength
+    ii = ((wave > 4000) & (wave < 6800))
+    wave = wave[ii]
+    flux = flux[:,ii]
+    ivar = ivar[:,ii]
+
+    # Cut a few bad pixels manually. I found these by training
+    # the cannon and finding abs(theta0-1) > 2
+    #bad_pixels = np.array([10193, 12532, 37860])
+    #mask = np.ones_like(wave, dtype=bool)
+    #mask[bad_pixels] = False
+    #wave = wave[mask]
+    #flux = flux[:,mask]
+    #ivar = ivar[:,mask]
+    return wave, flux, ivar
+
 def cut_pixels_5param(wave, flux, ivar):
     bad_pixels = np.array([4944, 12548, 37856])
     mask = np.ones_like(wave, dtype=bool)
@@ -107,10 +149,58 @@ if __name__=="__main__":
     training_labels_2 = ["Teff", "logg", "[M/H]", "Vt", "[Ca I/Fe]"]
     training_labels_3 = ["Teff", "logg", "[M/H]", "Vt", "[Mg I/Fe]", "[Ca I/Fe]"]
 
-    wave, flux, ivar = load_wave_flux_ivar()
+    ### 3 param, ivar0, star cut
+    (wave, mtab), flux, ivar = load_wave_flux_ivar(remove_hb=True, remove_0708=True)
     wave, flux, ivar = cut_pixels_1(wave, flux, ivar)
-    
+    print len(wave)
+    model = tc.CannonModel(
+        mtab, flux, ivar,
+        dispersion=wave,
+        vectorizer=tc.vectorizer.PolynomialVectorizer(training_labels, 2))
+    theta, s2, metadata = model.train(threads=4)
+    model.write("initial_naive_train_starcut.model", overwrite=True)
+    fig_theta = tc.plot.theta(model)
+    fig_theta.savefig("theta_starcut.png",dpi=600)
+    test_labels, cov, metadata = model.test(flux,ivar)
+    fig_comparison = tc.plot.one_to_one(model, test_labels)
+    fig_comparison.savefig("one-to-one_starcut.png", dpi=300)
+
+    ### 3 param, ivar0, wl cut, star cut
+    #(wave, mtab), flux, ivar = load_wave_flux_ivar(remove_hb=True, remove_0708=True)
+    #wave, flux, ivar = cut_pixels_4000_6800(wave, flux, ivar)
+    #print len(wave)
+    #model = tc.CannonModel(
+    #    mtab, flux, ivar,
+    #    dispersion=wave,
+    #    vectorizer=tc.vectorizer.PolynomialVectorizer(training_labels, 2))
+    #theta, s2, metadata = model.train(threads=4)
+    #model.write("initial_naive_train_starcut_40006800.model", overwrite=True)
+    #fig_theta = tc.plot.theta(model)
+    #fig_theta.savefig("theta_starcut_40006800.png",dpi=600)
+    #test_labels, cov, metadata = model.test(flux,ivar)
+    #fig_comparison = tc.plot.one_to_one(model, test_labels)
+    #fig_comparison.savefig("one-to-one_starcut_40006800.png", dpi=300)
+
+    ### 3 param, ivar0, wl cut
+    #wave, flux, ivar = load_wave_flux_ivar()
+    #wave, flux, ivar = cut_pixels_1(wave, flux, ivar)
+    #wave, flux, ivar = cut_pixels_4000_6800(wave, flux, ivar)
+    #print len(wave)
+    #model = tc.CannonModel(
+    #    mtab, flux, ivar,
+    #    dispersion=wave,
+    #    vectorizer=tc.vectorizer.PolynomialVectorizer(training_labels, 2))
+    #theta, s2, metadata = model.train(threads=4)
+    #model.write("initial_naive_train_ivar0_40006800.model", overwrite=True)
+    #fig_theta = tc.plot.theta(model)
+    #fig_theta.savefig("theta_ivar0_40006800.png",dpi=600)
+    #test_labels, cov, metadata = model.test(flux,ivar)
+    #fig_comparison = tc.plot.one_to_one(model, test_labels)
+    #fig_comparison.savefig("one-to-one_ivar0_40006800.png", dpi=300)
+
     ### Original training: 3 param, ivar0
+    #wave, flux, ivar = load_wave_flux_ivar()
+    #wave, flux, ivar = cut_pixels_1(wave, flux, ivar)
     #print len(wave)
     #model = tc.CannonModel(
     #    mtab, flux, ivar,
@@ -126,6 +216,8 @@ if __name__=="__main__":
     #fig_comparison.savefig("one-to-one_ivar0.png", dpi=300)
 
     ### 5param model, ivar0
+    #wave, flux, ivar = load_wave_flux_ivar()
+    #wave, flux, ivar = cut_pixels_1(wave, flux, ivar)
     #wave, flux, ivar = cut_pixels_5param(wave, flux, ivar)
     #print len(wave)
     #model = tc.CannonModel(
@@ -141,6 +233,8 @@ if __name__=="__main__":
     #fig_comparison.savefig("one-to-one_ivar0_5param.png", dpi=300)
 
     ### 6param model, ivar0
+    #wave, flux, ivar = load_wave_flux_ivar()
+    #wave, flux, ivar = cut_pixels_1(wave, flux, ivar)
     #wave, flux, ivar = cut_pixels_6param(wave, flux, ivar)
     #print len(wave)
     #model = tc.CannonModel(

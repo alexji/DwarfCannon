@@ -112,14 +112,16 @@ def load_master_table_and_spectra(rvcor_spectra=True):
     red_min2 = []; red_max2 = []
     blue_norder2 = []; red_norder2 = []
     order_numss = []; order_numss2 = []
+    codes = []
     for irow,row in enumerate(tab):
         #print row["blue_fname"], row["red_fname"]
         ordernumkey = None
         
-        blue = read_multispec("data/{}".format(row["blue_fname"]))
+        blue, codeblue = read_multispec("data/{}".format(row["blue_fname"]), full_output=True)
         if blue[0].dispersion[0] > blue[-1].dispersion[0]:
             blue = blue[::-1]
-        red  = read_multispec("data/{}".format(row["red_fname"]))
+        red, codered  = read_multispec("data/{}".format(row["red_fname"]), full_output=True)
+        assert codeblue == codered, (codeblue, codered)
         if red[0].dispersion[0] > red[-1].dispersion[0]:
             red = red[::-1]
         vbar, vhel = motions.corrections_from_headers(blue[0].metadata)
@@ -138,6 +140,7 @@ def load_master_table_and_spectra(rvcor_spectra=True):
         red_min.append(red[0].dispersion[0])
         red_max.append(red[-1].dispersion[-1])
         red_norder.append(len(red))
+        codes.append(codeblue)
         
         
         
@@ -177,6 +180,7 @@ def load_master_table_and_spectra(rvcor_spectra=True):
     tab.add_column(tab.Column(red_max, "red_wlmax"))
     tab.add_column(tab.Column(blue_norder, "blue_norder"))
     tab.add_column(tab.Column(red_norder, "red_norder"))
+    tab.add_column(tab.Column(codes, "data_code"))
     if rvcor_spectra:
         tab.add_column(tab.Column(blue_min2, "blue_wlmin2"))
         tab.add_column(tab.Column(blue_max2, "blue_wlmax2"))
@@ -358,17 +362,17 @@ def read_multispec(fname, full_output=False):
     if len(data.shape)==2:
         ## Compute flux
         flux = data
-        flux[0 > flux] = np.nan
+        #flux[0 > flux] = np.nan
 
         ## Compute ivar assuming Poisson noise
-        ivar = 1./flux
-        ivar[0 > flux] = 0
+        ivar = 1./np.abs(flux)
+        #ivar[0 > flux] = 0
         code=1
     elif len(data.shape)==3:
         flux = data[1]
         ivar = data[2]**(-2)
-        flux[0 > flux] = np.nan
-        ivar[0 > flux] = 0
+        #flux[0 > flux] = np.nan
+        #ivar[0 > flux] = 0
         code=2
 
     ## Turn into orders
@@ -460,6 +464,7 @@ def load_roed_data(full_output=False):
     df1.index = map(renamer, df1["Name"])
     star_labels = ["Teff", "logg", "Vt", "__M_H_"] # Should include some other columns eventually 
                                                    # to test how individual stars might affect things
+    star_labels += ["SN3950","SN4550","SN5200","SN6750"]
     for label in star_labels:
         mtab.add_column(mtab.Column(df1.loc[mtab["Star"]][label], label))
     mtab.rename_column("__M_H_", "[M/H]")

@@ -1,0 +1,37 @@
+Index        Star Telescope/Instrument        Date    UT Observer ExpTime                             blue_fname                             red_fname
+----- ----------- -------------------- ----------- ----- -------- ------- -------------------------------------- -------------------------------------
+    0 CS22166-016   Magellan-Clay/MIKE 2004 Aug 12 10:19      GWP    1600   cs22166-016blue_multi_200408gwp.fits   cs22166-016red_multi_200408gwp.fits
+    1 CS22169-035  Magellan-Baade/MIKE 2003 Jan 18 04:22      GWP    1400 cs22169-035blue_multi_200301gwp-1.fits cs22169-035red_multi_200301gwp-1.fits
+    2 CS22169-035  Magellan-Baade/MIKE 2003 Jan 20 02:05      GWP    2400 cs22169-035blue_multi_200301gwp-2.fits cs22169-035red_multi_200301gwp-2.fits
+    8 CS22186-023  Magellan-Baade/MIKE 2003 Jan 20 03:29      GWP    2000   cs22186-023blue_multi_200301gwp.fits   cs22186-023red_multi_200301gwp.fits
+   12 CS22877-001  Magellan-Baade/MIKE 2003 Jan 14 06:58      GWP    1000 cs22877-001blue_multi_200301gwp-1.fits cs22877-001red_multi_200301gwp-1.fits
+   13 CS22877-001  Magellan-Baade/MIKE 2003 Jan 15 07:52      GWP    1600 cs22877-001blue_multi_200301gwp-2.fits cs22877-001red_multi_200301gwp-2.fits
+   14 CS22877-001  Magellan-Baade/MIKE 2003 Jan 20 08:31      GWP    1200 cs22877-001blue_multi_200301gwp-3.fits cs22877-001red_multi_200301gwp-3.fits
+   16 CS22877-011  Magellan-Baade/MIKE 2003 Jan 16 08:36      GWP    2100 cs22877-011blue_multi_200301gwp-1.fits cs22877-011red_multi_200301gwp-1.fits
+   17 CS22877-011  Magellan-Baade/MIKE 2003 Jan 17 08:16      GWP    4000 cs22877-011blue_multi_200301gwp-2.fits cs22877-011red_multi_200301gwp-2.fits
+   21 CS22880-086  Magellan-Baade/MIKE 2003 Jun 22 07:58      SAS    7200   cs22880-086blue_multi_200306sas.fits   cs22880-086red_multi_200306sas.fits
+   23 CS22890-024  Magellan-Baade/MIKE 2003 Jun 13 00:40      GWP    1600   cs22890-024blue_multi_200306gwp.fits   cs22890-024red_multi_200306gwp.fits
+   27 CS22891-221   Magellan-Clay/MIKE 2004 Jun 29 02:32      GWP    8000   cs22891-221blue_multi_200406gwp.fits   cs22891-221red_multi_200406gwp.fits
+   28 CS22892-052  Magellan-Baade/MIKE 2003 Jun 26 10:12      SAS    2400   cs22892-052blue_multi_200306sas.fits   cs22892-052red_multi_200306sas.fits
+   29 CS22892-052   Magellan-Clay/MIKE 2004 Jun 29 09:11      GWP    2400   cs22892-052blue_multi_200406gwp.fits   cs22892-052red_multi_200406gwp.fits
+   36 CS22898-047   Magellan-Clay/MIKE 2004 Jun 30 04:18      GWP    3600   cs22898-047blue_multi_200406gwp.fits   cs22898-047red_multi_200406gwp.fits
+   38 CS22940-077  Magellan-Baade/MIKE 2003 Apr 09 08:14      IBT    1000   cs22940-077blue_multi_200304ibt.fits   cs22940-077red_multi_200304ibt.fits
+   39 CS22940-121  Magellan-Baade/MIKE 2003 Jun 14 04:50      GWP    4000   cs22940-121blue_multi_200306gwp.fits   cs22940-121red_multi_200306gwp.fits
+   40 CS22940-121   Magellan-Clay/MIKE 2003 Oct 12 00:34      GWP    4800   cs22940-121blue_multi_200310gwp.fits   cs22940-121red_multi_200310gwp.fits
+   47 CS22943-137  Magellan-Baade/MIKE 2003 Jun 23 05:37      SAS    3600   cs22943-137blue_multi_200306sas.fits   cs22943-137red_multi_200306sas.fits
+   49 CS22944-032   Magellan-Clay/MIKE 2004 Jun 30 09:51      GWP    4400   cs22944-032blue_multi_200406gwp.fits   cs22944-032red_multi_200406gwp.fits
+   63 CS22951-077  Magellan-Baade/MIKE 2003 Jun 14 06:18      GWP    3200   cs22951-077blue_multi_200306gwp.fits   cs22951-077red_multi_200306gwp.fits
+   64 CS22951-077   Magellan-Clay/MIKE 2003 Oct 13 02:20      GWP    3600   cs22951-077blue_multi_200310gwp.fits   cs22951-077red_multi_200310gwp.fits
+   74 CS22958-083   Magellan-Clay/MIKE 2003 Oct 09 08:05      GWP    7200   cs22958-083blue_multi_200310gwp.fits   cs22958-083red_multi_200310gwp.fits
+   75 CS22959-074  Magellan-Baade/MIKE 2003 Jun 24 04:44      SAS    4000   cs22959-074blue_multi_200306sas.fits   cs22959-074red_multi_200306sas.fits
+   77 CS22960-048  Magellan-Baade/MIKE 2003 Jun 22 09:43      SAS    3600 cs22960-048blue_multi_200306sas-1.fits cs22960-048red_multi_200306sas-1.fits
+   78 CS22960-048  Magellan-Baade/MIKE 2003 Jun 24 08:44      SAS    4000 cs22960-048blue_multi_200306sas-2.fits cs22960-048red_multi_200306sas-2.fits
+   80 CS22960-053   Magellan-Clay/MIKE 2003 Jul 18 08:19      SAS    4000 cs22960-053blue_multi_200307sas-1.fits cs22960-053red_multi_200307sas-1.fits
+   81 CS22960-053   Magellan-Clay/MIKE 2003 Jul 19 08:06      SAS    4000 cs22960-053blue_multi_200307sas-2.fits cs22960-053red_multi_200307sas-2.fits
+   83 CS22963-004  Magellan-Baade/MIKE 2003 Jan 17 02:00      GWP    3000 cs22963-004blue_multi_200301gwp-1.fits cs22963-004red_multi_200301gwp-1.fits
+   84 CS22963-004  Magellan-Baade/MIKE 2003 Jan 18 01:48      GWP    6000 cs22963-004blue_multi_200301gwp-2.fits cs22963-004red_multi_200301gwp-2.fits
+   94 CS30312-044   Magellan-Clay/MIKE 2003 Jul 20 01:21      SAS    3600   cs30312-044blue_multi_200307sas.fits   cs30312-044red_multi_200307sas.fits
+   98 CS30339-073   Magellan-Clay/MIKE 2003 Jul 18 08:59      SAS    4000 cs30339-073blue_multi_200307sas-1.fits cs30339-073red_multi_200307sas-1.fits
+   99 CS30339-073   Magellan-Clay/MIKE 2003 Jul 19 08:45      SAS    4000 cs30339-073blue_multi_200307sas-2.fits cs30339-073red_multi_200307sas-2.fits
+  103 CS31082-001   Magellan-Clay/MIKE 2003 Jul 19 10:27      SAS    1800   cs31082-001blue_multi_200307sas.fits   cs31082-001red_multi_200307sas.fits
+  106   CD-38_245  Magellan-Baade/MIKE 2003 Jun 24 10:33      SAS     800     cdm38-245blue_multi_200306sas.fits     cdm38-245red_multi_200306sas.fits

@@ -8,14 +8,12 @@ from smh import specutils
 
 import thecannon as tc
 
-if __name__=="__main__":
-    mtab = rd.load_roed_data()
-    training_labels = ["Teff", "logg", "[M/H]"]
-    training_labels_2 = ["Teff", "logg", "[M/H]", "Vt", "[Ca I/Fe]"]
-    training_labels_3 = ["Teff", "logg", "[M/H]", "Vt", "[Mg I/Fe]", "[Ca I/Fe]"]
+def load_wave_flux_ivar():
     wave = rd.load_master_common_dispersion()
     flux, ivar = rd.load_stitched_flux_ivar()
+    return wave, flux, ivar
 
+def cut_pixels_1(wave, flux, ivar):
 #    # Only keep pixels that are defined for all stars
 #    good_pixel_mask = np.sum(np.isnan(flux),axis=0) == 0
 #    # Further mask pixels that have unremoved cosmics etc
@@ -42,12 +40,12 @@ if __name__=="__main__":
     
     ## Remove nan pixels
     ii = np.isnan(flux)
-    flux[ii] = 0.0
+    flux[ii] = 1.0
     ivar[ii] = 0.0
     
     ## Remove outlier points
     ii = np.abs(flux - 1) > 1
-    flux[ii] = 0.0
+    flux[ii] = 1.0
     ivar[ii] = 0.0
     
     # Cut on wavelength
@@ -74,53 +72,19 @@ if __name__=="__main__":
     wave = wave[mask]
     flux = flux[:,mask]
     ivar = ivar[:,mask]
-
-#def train():
-#    print len(wave)
-#    model = tc.CannonModel(
-#        mtab, flux, ivar,
-#        dispersion=wave,
-#        vectorizer=tc.vectorizer.PolynomialVectorizer(training_labels, 2))
     
-#    theta, s2, metadata = model.train(threads=2)
-#    model.write("initial_naive_train.model", overwrite=True)
-#    
-#    fig_theta = tc.plot.theta(model)
-#    fig_theta.savefig("theta.png",dpi=600)
-    
-    
-#    theta, s2, metadata = model.train(threads=4)
-#    model.write("initial_naive_train_ivar0.model", overwrite=True)
-#    fig_theta = tc.plot.theta(model)
-#    fig_theta.savefig("theta_ivar0.png",dpi=600)
-#
-#    test_labels, cov, metadata = model.test(flux,ivar)
-#    fig_comparison = tc.plot.one_to_one(model, test_labels)
-#    fig_comparison.savefig("one-to-one_ivar0.png", dpi=300)
+    return wave, flux, ivar
 
-#    bad_pixels = np.array([4944, 12548, 37856])
-#    mask = np.ones_like(wave, dtype=bool)
-#    mask[bad_pixels] = False
-#    wave = wave[mask]
-#    flux = flux[:,mask]
-#    ivar = ivar[:,mask]
-#
-#    print len(wave)
-#    model = tc.CannonModel(
-#        mtab, flux, ivar,
-#        dispersion=wave,
-#        vectorizer=tc.vectorizer.PolynomialVectorizer(training_labels_2, 2))
-#    
-#    theta, s2, metadata = model.train(threads=4)
-#    model.write("initial_naive_train_ivar0_5param.model", overwrite=True)
-#    fig_theta = tc.plot.theta(model, indices=range(6))
-#    fig_theta.savefig("theta_ivar0_5param.png",dpi=600)
-#
-#    test_labels, cov, metadata = model.test(flux,ivar)
-#    fig_comparison = tc.plot.one_to_one(model, test_labels)
-#    fig_comparison.savefig("one-to-one_ivar0_5param.png", dpi=300)
+def cut_pixels_5param(wave, flux, ivar):
+    bad_pixels = np.array([4944, 12548, 37856])
+    mask = np.ones_like(wave, dtype=bool)
+    mask[bad_pixels] = False
+    wave = wave[mask]
+    flux = flux[:,mask]
+    ivar = ivar[:,mask]
+    return wave, flux, ivar
 
-
+def cut_pixels_6param(wave, flux, ivar):
     bad_pixels = np.array([4803, 12533])
     mask = np.ones_like(wave, dtype=bool)
     mask[bad_pixels] = False
@@ -134,19 +98,72 @@ if __name__=="__main__":
     wave = wave[mask]
     flux = flux[:,mask]
     ivar = ivar[:,mask]
-
-    print len(wave)
-    model = tc.CannonModel(
-        mtab, flux, ivar,
-        dispersion=wave,
-        vectorizer=tc.vectorizer.PolynomialVectorizer(training_labels_3, 2))
     
-    theta, s2, metadata = model.train(threads=4)
-    model.write("initial_naive_train_ivar0_6param.model", overwrite=True)
-    fig_theta = tc.plot.theta(model, indices=range(7))
-    fig_theta.savefig("theta_ivar0_6param.png",dpi=600)
+    return wave, flux, ivar
 
-    test_labels, cov, metadata = model.test(flux,ivar)
-    fig_comparison = tc.plot.one_to_one(model, test_labels)
-    fig_comparison.savefig("one-to-one_ivar0_6param.png", dpi=300)
+if __name__=="__main__":
+    mtab = rd.load_roed_data()
+    training_labels = ["Teff", "logg", "[M/H]"]
+    training_labels_2 = ["Teff", "logg", "[M/H]", "Vt", "[Ca I/Fe]"]
+    training_labels_3 = ["Teff", "logg", "[M/H]", "Vt", "[Mg I/Fe]", "[Ca I/Fe]"]
 
+    wave, flux, ivar = load_wave_flux_ivar()
+    wave, flux, ivar = cut_pixels_1(wave, flux, ivar)
+    
+    ### Original training: 3 param, ivar0
+    #print len(wave)
+    #model = tc.CannonModel(
+    #    mtab, flux, ivar,
+    #    dispersion=wave,
+    #    vectorizer=tc.vectorizer.PolynomialVectorizer(training_labels, 2))
+    #theta, s2, metadata = model.train(threads=4)
+    #model.write("initial_naive_train_ivar0.model", overwrite=True)
+    #fig_theta = tc.plot.theta(model)
+    #fig_theta.savefig("theta_ivar0.png",dpi=600)
+    #
+    #test_labels, cov, metadata = model.test(flux,ivar)
+    #fig_comparison = tc.plot.one_to_one(model, test_labels)
+    #fig_comparison.savefig("one-to-one_ivar0.png", dpi=300)
+
+    ### 5param model, ivar0
+    #wave, flux, ivar = cut_pixels_5param(wave, flux, ivar)
+    #print len(wave)
+    #model = tc.CannonModel(
+    #    mtab, flux, ivar,
+    #    dispersion=wave,
+    #    vectorizer=tc.vectorizer.PolynomialVectorizer(training_labels_2, 2))
+    #theta, s2, metadata = model.train(threads=4)
+    #model.write("initial_naive_train_ivar0_5param.model", overwrite=True)
+    #fig_theta = tc.plot.theta(model, indices=range(6))
+    #fig_theta.savefig("theta_ivar0_5param.png",dpi=600)
+    #test_labels, cov, metadata = model.test(flux,ivar)
+    #fig_comparison = tc.plot.one_to_one(model, test_labels)
+    #fig_comparison.savefig("one-to-one_ivar0_5param.png", dpi=300)
+
+    ### 6param model, ivar0
+    #wave, flux, ivar = cut_pixels_6param(wave, flux, ivar)
+    #print len(wave)
+    #model = tc.CannonModel(
+    #    mtab, flux, ivar,
+    #    dispersion=wave,
+    #    vectorizer=tc.vectorizer.PolynomialVectorizer(training_labels_3, 2))
+    #theta, s2, metadata = model.train(threads=4)
+    #model.write("initial_naive_train_ivar0_6param.model", overwrite=True)
+    #fig_theta = tc.plot.theta(model, indices=range(7))
+    #fig_theta.savefig("theta_ivar0_6param.png",dpi=600)
+    #test_labels, cov, metadata = model.test(flux,ivar)
+    #fig_comparison = tc.plot.one_to_one(model, test_labels)
+    #fig_comparison.savefig("one-to-one_ivar0_6param.png", dpi=300)
+
+
+    ### 0th order train: this is not used anymore, it was with cutting inconsistent pixels
+    #print len(wave)
+    #model = tc.CannonModel(
+    #    mtab, flux, ivar,
+    #    dispersion=wave,
+    #    vectorizer=tc.vectorizer.PolynomialVectorizer(training_labels, 2))
+    #theta, s2, metadata = model.train(threads=2)
+    #model.write("initial_naive_train.model", overwrite=True)
+    #fig_theta = tc.plot.theta(model)
+    #fig_theta.savefig("theta.png",dpi=600)
+    
